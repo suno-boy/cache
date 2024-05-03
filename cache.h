@@ -1,33 +1,48 @@
 #ifndef CACHE_H
 #define CACHE_H
-
 #include <string>
 
-#define CACHE_SIZE 10
+#define CACHE_SIZE 10  // 캐시의 최대 용량을 정의
+
+// 노드가 저장할 수 있는 데이터 타입을 나타내는 열거형
+enum class NodeType { IntType, DoubleType };
 
 class Cache {
 private:
-  // TODO: private inner struct/class 선언 가능
-  // TODO: private 멤버 변수와 함수 추가 가능
+    struct Node {
+        std::string key;
+        void* value;
+        NodeType type;  // 노드의 타입을 저장
+        Node* next;
+        
+        Node(std::string k, void* v, NodeType t, Node* n = nullptr)
+            : key(k), value(v), type(t), next(n) {}
+    };
+
+    Node** table;  // Node 포인터의 배열로 구성된 해시 테이블 선언
+    int count;  // 현재 저장된 노드의 수
+
+    void removeLast();  // 리스트에서 가장 오래된 노드를 제거하는 함수
+    void clear();  // 전체 리스트를 비우는 함수
+    int hash(std::string key) {  // 해시 함수
+        int sum = 0;
+        for (char ch : key) {
+            sum += ch;
+        }
+        return sum % 10;
+    }
+
 
 public:
-  Cache();
-  ~Cache();
-  // int를 cache에 추가한다
-  void add(std::string key, int value);
-  // double을 cache에 추가한다
-  void add(std::string key, double value);
-  // key에 해당하는 value를 cache에서 가져온다
-  // 타입과 key가 동일한 원소가 없다면 false를 반환한다.
-  bool get(std::string key, int &value);
-  // key에 해당하는 value를 cache에서 가져온다.
-  // 타입과 key가 동일한 원소가 없다면 false를 반환한다.
-  bool get(std::string key, double &value);
+    Cache();  // 생성자
+    ~Cache();  // 소멸자
 
-  // 디버그 및 채점 용: 연결 리스트를 문자열로 표현하여 반환한다
-  // 다음과 같이 표현된 문자열을 반환한다
-  // [key1: value1] -> [key2: value2] -> ... -> [keyN: valueN]
-  std::string toString();
+    void add(std::string key, int value);  // 캐시에 int 값을 추가하는 함수
+    void add(std::string key, double value);  // 캐시에 double 값을 추가하는 함수
+    bool get(std::string key, int &value);  // key에 해당하는 int 값의 존재 유무와 값을 반환하는 함수
+    bool get(std::string key, double &value);  // key에 해당하는 double 값의 존재 유무와 값을 반환하는 함수
+
+    std::string toString();  // 캐시의 내용을 문자열로 반환하는 함수 (디버깅 목적)
 };
 
 #endif
