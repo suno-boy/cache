@@ -13,13 +13,18 @@ private:
         std::string key;
         void* value;
         NodeType type;  // 노드의 타입을 저장
-        Node* next;
-        
-        Node(std::string k, void* v, NodeType t, Node* n = nullptr)
-            : key(k), value(v), type(t), next(n) {}
+        Node* next;  // 다음 노드를 가리키는 포인터
+        Node* prev;  // 이전 노드를 가리키는 포인터
+        Node* nextInHash;  // 해시 테이블에서 다음 노드를 가리키는 포인터
+
+        // 노드 생성자 업데이트: 이중 연결 리스트 지원
+        Node(std::string k, void* v, NodeType t, Node* n = nullptr, Node* p = nullptr, Node* nh = nullptr)
+            : key(k), value(v), type(t), next(n), prev(p), nextInHash(nh) {}
     };
 
     Node** table;  // Node 포인터의 배열로 구성된 해시 테이블 선언
+    Node* head;  // 이중 연결 리스트의 헤드
+    Node* tail;  // 이중 연결 리스트의 테일
     int count;  // 현재 저장된 노드의 수
 
     void removeLast();  // 리스트에서 가장 오래된 노드를 제거하는 함수
@@ -31,7 +36,6 @@ private:
         }
         return sum % 10;
     }
-
 
 public:
     Cache();  // 생성자

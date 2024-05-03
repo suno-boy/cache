@@ -2,8 +2,8 @@
 #include <sstream>
 #include <iostream>
 
-Cache::Cache() : count(0) {
-    table = new Node*[CACHE_SIZE]();  // 캐시 크기만큼의 배열을 동적 할당
+Cache::Cache() : head(nullptr), tail(nullptr), count(0) {
+    table = new Node*[CACHE_SIZE]();
 }
 
 Cache::~Cache() {
@@ -17,12 +17,22 @@ void Cache::add(std::string key, int value) {
         removeLast();
     }
     int* storedValue = new int(value);
-    Node* newNode = new Node(key, static_cast<void*>(storedValue), NodeType::IntType, nullptr);
-    // 맨 앞에 노드를 추가하는 로직 수정
-    if (table[index] != nullptr) {
-        newNode->next = table[index];
+    Node* newNode = new Node(key, static_cast<void*>(storedValue), NodeType::IntType, nullptr, nullptr);
+    
+    // 이중 연결 리스트에 추가
+    newNode->next = head;
+    if (head != nullptr) {
+        head->prev = newNode;
     }
+    head = newNode;
+    if (tail == nullptr) {
+        tail = newNode;
+    }
+
+    // 해시 테이블 업데이트
+    newNode->nextInHash = table[index];
     table[index] = newNode;
+
     count++;
 }
 
@@ -32,88 +42,130 @@ void Cache::add(std::string key, double value) {
         removeLast();
     }
     double* storedValue = new double(value);
-    Node* newNode = new Node(key, static_cast<void*>(storedValue), NodeType::DoubleType, nullptr);
-    // 맨 앞에 노드를 추가하는 로직 수정
-    if (table[index] != nullptr) {
-        newNode->next = table[index];
+    Node* newNode = new Node(key, static_cast<void*>(storedValue), NodeType::DoubleType, nullptr, nullptr);
+
+    // 이중 연결 리스트에 추가
+    newNode->next = head;
+    if (head != nullptr) {
+        head->prev = newNode;
     }
+    head = newNode;
+    if (tail == nullptr) {
+        tail = newNode;
+    }
+
+    // 해시 테이블 업데이트
+    newNode->nextInHash = table[index];
     table[index] = newNode;
+
     count++;
 }
 
-// 항목을 찾았을 때 맨 앞으로 이동
 bool Cache::get(std::string key, int &value) {
     int index = hash(key);
     Node* current = table[index];
-    Node* prev = nullptr;
     while (current != nullptr) {
         if (current->key == key && current->type == NodeType::IntType) {
             value = *(static_cast<int*>(current->value));
-            if (prev) {  // 노드가 맨 앞이 아닐 경우
-                prev->next = current->next;  // 현재 노드를 리스트에서 분리
-                current->next = table[index];  // 맨 앞에 현재 노드를 추가
-                table[index] = current;
+
+            // 맨 앞으로 이동
+            if (current != head) {
+                if (current->prev) {
+                    current->prev->next = current->next;
+                }
+                if (current->next) {
+                    current->next->prev = current->prev;
+                }
+                if (current == tail) {
+                    tail = current->prev;
+                }
+
+                current->next = head;
+                current->prev = nullptr;
+                head->prev = current;
+                head = current;
             }
+
             return true;
         }
-        prev = current;
-        current = current->next;
+        current = current->nextInHash;
     }
     return false;
 }
+
 bool Cache::get(std::string key, double &value) {
     int index = hash(key);
     Node* current = table[index];
-    Node* prev = nullptr;
     while (current != nullptr) {
         if (current->key == key && current->type == NodeType::DoubleType) {
             value = *(static_cast<double*>(current->value));
-            if (prev) {  // 노드가 맨 앞이 아닐 경우
-                prev->next = current->next;  // 현재 노드를 리스트에서 분리
-                current->next = table[index];  // 맨 앞에 현재 노드를 추가
-                table[index] = current;
+
+            // 맨 앞으로 이동
+            if (current != head) {
+                if (current->prev) {
+                    current->prev->next = current->next;
+                }
+                if (current->next) {
+                    current->next->prev = current->prev;
+                }
+                if (current == tail) {
+                    tail = current->prev;
+                }
+
+                current->next = head;
+                current->prev = nullptr;
+                head->prev = current;
+                head = current;
             }
+
             return true;
         }
-        prev = current;
-        current = current->next;
+        current = current->nextInHash;
     }
     return false;
 }
-void Cache::removeLast() {
-    if (count == 0) return;
-    for (int i = 0; i < CACHE_SIZE; i++) {
-        if (table[i] && !table[i]->next) {  // 하나의 노드만 있는 경우
-            delete table[i];
-            table[i] = nullptr;
-            count--;
-            return;
-        }
 
-        Node* current = table[i];
-        Node* prev = nullptr;
-        while (current && current->next) {
-            prev = current;
-            current = current->next;
-        }
-        if (current && prev) {
-            prev->next = nullptr;
-            delete current;
-            count--;
-            return;
-        }
+void Cache::removeLast() {
+    if (tail == nullptr) return;
+
+    int index = hash(tail->key);
+    Node* current = table[index];
+    Node* prev = nullptr;
+
+    while (current != tail) {
+        prev = current;
+        current = current->nextInHash;
     }
+
+    if (prev) {
+        prev->nextInHash = current->nextInHash;
+    } else {
+        table[index] = current->nextInHash;
+    }
+
+    if (tail->prev) {
+        tail->prev->next = nullptr;
+    }
+    delete tail;
+    tail = tail->prev;
+    if (tail == nullptr) {
+        head = nullptr;
+    }
+
+    count--;
 }
 
-
 void Cache::clear() {
+    Node* current = head;
+    while (current != nullptr) {
+        Node* temp = current;
+        current = current->next;
+        delete temp;
+    }
+    head = nullptr;
+    tail = nullptr;
+
     for (int i = 0; i < CACHE_SIZE; i++) {
-        Node* current = table[i];
-        while (current) {
-            Node* temp = current;
-            current = current->next;
-            delete temp;
-        }
         table[i] = nullptr;
     }
     count = 0;
@@ -121,21 +173,19 @@ void Cache::clear() {
 
 std::string Cache::toString() {
     std::stringstream ss;
+    Node* current = head;
     bool first = true;
-    for (int i = 0; i < CACHE_SIZE; i++) {
-        Node* current = table[i];
-        while (current != nullptr) {
-            if (!first) {
-                ss << " -> ";
-            }
-            if (current->type == NodeType::IntType) {
-                ss << "[" << current->key << ": " << *(static_cast<int*>(current->value)) << "]";
-            } else {
-                ss << "[" << current->key << ": " << *(static_cast<double*>(current->value)) << "]";
-            }
-            first = false;
-            current = current->next;
+    while (current != nullptr) {
+        if (!first) {
+            ss << " -> ";
         }
+        if (current->type == NodeType::IntType) {
+            ss << "[" << current->key << ": " << *(static_cast<int*>(current->value)) << "]";
+        } else {
+            ss << "[" << current->key << ": " << *(static_cast<double*>(current->value)) << "]";
+        }
+        first = false;
+        current = current->next;
     }
     ss << std::endl;
     return ss.str();
